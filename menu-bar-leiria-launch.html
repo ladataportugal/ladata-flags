@@ -1,0 +1,762 @@
+<!-- ================= LADATA · MENU BAR (SITE HEADER) =================
+     WHERE TO PASTE: Squarespace → Settings → Advanced → Code Injection → HEADER
+     (paste the whole thing once; it then shows on every page of the site).
+     Do NOT use a Code Block — a block only lives inside one page.
+
+     It hides Squarespace's own header and adds top spacing so content is clear.
+
+     ------------------------------------------------------------------
+     THIS IS THE LEIRIA LAUNCH VERSION.  Built 30 Oct 2026.
+
+     ⚠️ DO NOT PASTE THIS UNTIL LEIRIA IS ACTUALLY OPEN.
+
+     It presents Leiria as open and bookable: no COMING SOON tag, a live
+     status dot on the Leiria booking choice, and Memberships and Login that
+     follow whichever location the visitor is looking at. Pasting it early
+     tells every visitor the house is taking bookings.
+
+     The bar that is live until then is the previous version, unchanged.
+
+     Built from the Lovable design export, with four things merged in from the
+     leiria-launch branch that the export did not have:
+       - per-location links (Memberships, Login, logo) via data-ladata-nav
+       - the SITE map and path-derived location
+       - markActive(), called from paintLinks() so it runs AFTER the hrefs are
+         repointed - running it before compares against Porto's URLs and never
+         matches on a Leiria page
+       - store() rather than a read()-named helper; read() already exists above
+         as the scroll handler and a second declaration silently replaces it,
+         which is how the bar once stopped shrinking on scroll
+
+     NOT included, deliberately: the 75km geolocation redirect. It sends the
+     visitor's IP to a third party and the privacy policy does not cover that
+     yet. It is its own piece of work, not part of this launch.
+
+     Book now is an explicit two-location chooser and does NOT follow the
+     page's location. That is intended: the primary CTA offers the choice
+     rather than guessing.
+     ------------------------------------------------------------------
+
+     LANGUAGE (Weglot): the EN/PT button calls Weglot automatically when the
+     Weglot script is installed on the site (Squarespace extension or its own
+     code injection). Nothing else to configure. If Weglot is missing, the
+     button simply swaps its own label.
+
+     COLOUR: the bar reads what is behind it and switches automatically —
+     dark text over pale backgrounds, cream text on a dark glass pill over
+     photography or dark sections. To force it on a section, add
+     data-ladata-nav="light" (cream text) or data-ladata-nav="dark".
+=================================================================== -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ---------- hide Squarespace's native header, keep the editor intact ---------- */
+body:not(.sqs-edit-mode) #header,
+body:not(.sqs-edit-mode) .header,
+body:not(.sqs-edit-mode) .Header,
+body:not(.sqs-edit-mode) .header-announcement-bar-wrapper > .header{display:none!important;}
+body:not(.sqs-edit-mode) #siteWrapper,
+body:not(.sqs-edit-mode) #sections{padding-top:0!important;}
+body:not(.sqs-edit-mode){padding-top:0!important;}
+
+.ladata-nav,.ladata-nav *{box-sizing:border-box;}
+.ladata-nav{
+  --cream:#FBFBFB;--light:#E8E8E8;--warm:#D0CEC8;--mid:#817A7A;--dark:#342E2E;--deep:#1E1B1B;--neon:#7FE3C4;--rose:#f14d4c;
+  position:fixed;top:0;left:0;right:0;z-index:9000;
+  font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  padding:14px 12px;background:transparent;
+  transition:padding .5s cubic-bezier(.16,1,.3,1);
+}
+/* --- the pill --- */
+.ladata-nav__wrap{
+  max-width:1180px;margin:0 auto;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;
+  padding:12px;border-radius:999px;
+  border:1px solid rgba(30,27,27,.08);
+  background:rgba(251,251,251,.42);
+  -webkit-backdrop-filter:saturate(210%) contrast(105%) blur(20px);backdrop-filter:saturate(210%) contrast(105%) blur(20px);
+  box-shadow:inset 0 1px 0 0 rgba(255,255,255,.30),0 18px 50px -34px rgba(30,27,27,.5);
+  transition:max-width .6s cubic-bezier(.16,1,.3,1),padding .5s cubic-bezier(.16,1,.3,1),background .5s ease,border-color .5s ease,box-shadow .5s ease;
+}
+.ladata-nav.is-stuck{padding:10px 12px;}
+.ladata-nav.is-stuck .ladata-nav__wrap{
+  max-width:1180px;padding:7px 10px;
+  background:rgba(251,251,251,.58);border-color:rgba(30,27,27,.1);
+  box-shadow:inset 0 1px 0 0 rgba(255,255,255,.18),0 16px 44px -30px rgba(30,27,27,.6);
+}
+/* --- logo: full lockup at rest, wordmark only once moving --- */
+.ladata-nav__logo{
+  grid-column:2;justify-self:start;
+  position:relative;display:block;width:116px;height:29px;margin:0;text-decoration:none;
+  transition:opacity .3s ease,width .5s cubic-bezier(.16,1,.3,1),height .5s cubic-bezier(.16,1,.3,1);
+}
+.ladata-nav__logo:hover{opacity:.72;}
+.ladata-nav__logoFull,.ladata-nav__logoWord{
+  position:absolute;inset:0;display:block;transition:opacity .4s ease,transform .5s cubic-bezier(.16,1,.3,1);
+}
+.ladata-nav__logoFull,.ladata-nav__logoWord{overflow:hidden;}
+.ladata-nav__logoFull img,.ladata-nav__logoWord img{position:absolute;left:0;width:100%;height:auto;max-width:none;object-fit:initial;}
+.ladata-nav__logoFull img{top:-18%;}
+.ladata-nav__logoWord img{top:-22%;}
+.ladata-nav__logoLight{opacity:0;}
+.ladata-nav__logoWord{opacity:0;transform:translateY(3px) scale(.96);}
+.ladata-nav__logoLabel{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+.ladata-nav.is-stuck .ladata-nav__logo{width:92px;height:19px;}
+.ladata-nav.is-stuck .ladata-nav__logoFull{opacity:0;transform:translateY(-3px) scale(.96);}
+.ladata-nav.is-stuck .ladata-nav__logoWord{opacity:1;transform:none;}
+
+/* --- link groups --- */
+.ladata-nav__links{display:none;align-items:center;justify-content:center;gap:26px;gap:clamp(14px,1.7vw,30px);min-width:0;}
+.ladata-nav__side{display:none;align-items:center;gap:10px;}
+.ladata-nav__link{
+  position:relative;color:var(--dark);text-decoration:none;white-space:nowrap;
+  font-size:11px;font-weight:400;letter-spacing:.16em;text-transform:uppercase;
+  background-image:linear-gradient(currentColor,currentColor);background-size:0% 1px;
+  background-repeat:no-repeat;background-position:0 calc(100% + 3px);
+  transition:color .3s ease,background-size .45s cubic-bezier(.16,1,.3,1),opacity .3s ease;
+}
+.ladata-nav__link:hover{background-size:100% 1px;color:var(--dark);}
+.ladata-nav__link.is-active{background-size:100% 1px;}
+.ladata-nav__lang{
+  display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;
+  border:0!important;cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(251,251,251,.36))!important;
+  -webkit-backdrop-filter:blur(16px) saturate(160%)!important;backdrop-filter:blur(16px) saturate(160%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 1px rgba(30,27,27,.05),0 1px 2px rgba(30,27,27,.05),0 10px 22px -14px rgba(30,27,27,.32)!important;
+  font-family:inherit;font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--dark);
+  transition:box-shadow .3s ease,color .3s ease,background .3s ease,transform .35s cubic-bezier(.16,1,.3,1);
+}
+.ladata-nav__lang:hover{background:linear-gradient(180deg,rgba(255,255,255,.88),rgba(251,251,251,.5))!important;box-shadow:inset 0 1px 0 #fff,inset 0 -1px 1px rgba(30,27,27,.05),0 2px 4px rgba(30,27,27,.06),0 14px 28px -14px rgba(30,27,27,.36)!important;transform:translateY(-1px)!important;color:var(--dark)!important;}
+.ladata-nav__lang [data-sep]{opacity:.4;}
+.ladata-nav__lang [data-off]{opacity:.62;}
+
+/* --- location picker --- */
+.ladata-nav__sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.ladata-nav__location{position:relative;}
+.ladata-nav__locationButton{
+  display:inline-flex!important;align-items:center!important;gap:6px;padding:6px 12px!important;border-radius:999px!important;
+  border:0!important;cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.78),rgba(251,251,251,.4))!important;
+  -webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 1px rgba(30,27,27,.05),0 1px 2px rgba(30,27,27,.06),0 12px 26px -14px rgba(30,27,27,.38)!important;
+  font-family:inherit!important;font-size:10px!important;font-weight:500!important;line-height:1!important;letter-spacing:.14em;text-transform:uppercase;color:var(--dark)!important;
+  transition:box-shadow .3s ease,color .3s ease,background .3s ease,transform .35s cubic-bezier(.16,1,.3,1);
+}
+.ladata-nav__locationButton:hover{background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(251,251,251,.55))!important;box-shadow:inset 0 1px 0 #fff,inset 0 -1px 1px rgba(30,27,27,.05),0 2px 4px rgba(30,27,27,.07),0 16px 32px -14px rgba(30,27,27,.42)!important;transform:translateY(-1px);}
+.ladata-nav__locationLabel{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap;}
+.ladata-nav__locationChevron{width:12px;height:12px;opacity:.65;transition:transform .3s cubic-bezier(.16,1,.3,1);}
+.ladata-nav__locationIcon{width:14px;height:14px;stroke-width:1.55;}
+.ladata-nav__location.is-open .ladata-nav__locationChevron{transform:rotate(180deg);}
+.ladata-nav__locationChoices{position:absolute;z-index:1;top:calc(100% - 7px);left:0;width:100%;min-width:150px;padding-top:12px;display:grid;gap:6px;pointer-events:none;visibility:hidden;}
+.ladata-nav__locationChoices::before{content:"";position:absolute;z-index:-1;top:1px;left:50%;width:34px;height:22px;border-radius:0 0 50% 50%;background:rgba(251,251,251,.9);filter:blur(5px);opacity:0;transform:translate(-50%,-13px) scale(.5,.2);transition:opacity .28s ease,transform .58s cubic-bezier(.16,1,.3,1);}
+.ladata-nav__locationChoice{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:9px!important;width:100%!important;height:36px!important;padding:0 14px!important;border-radius:999px!important;border:0!important;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(251,251,251,.9))!important;color:var(--dark)!important;text-decoration:none!important;white-space:nowrap;-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(30,27,27,.05),0 18px 36px -20px rgba(30,27,27,.5)!important;font-family:inherit!important;font-size:9px!important;font-weight:500!important;line-height:1!important;letter-spacing:.13em!important;text-transform:uppercase!important;opacity:0;transform:translateY(-20px) scale(.72,.45);transform-origin:50% 0;transition:opacity .28s ease,transform .62s cubic-bezier(.16,1,.3,1),background .25s ease,box-shadow .25s ease,color .25s ease;}
+.ladata-nav__locationChoice:nth-child(2){transform:translateY(-48px) scale(.62,.35);transition-delay:0s;}
+.ladata-nav__locationChoice:hover{background:linear-gradient(180deg,#fff,rgba(251,251,251,.96))!important;box-shadow:inset 0 1px 0 #fff,0 2px 4px rgba(30,27,27,.06),0 22px 40px -20px rgba(30,27,27,.55)!important;color:var(--dark)!important;}
+.ladata-nav__locationChoice.is-active{background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(232,230,226,.92))!important;color:var(--dark)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 2px rgba(30,27,27,.08),0 1px 2px rgba(30,27,27,.06),0 18px 36px -20px rgba(30,27,27,.55)!important;}
+.ladata-nav__location.is-open .ladata-nav__locationChoices{pointer-events:auto;visibility:visible;}
+.ladata-nav__location.is-open .ladata-nav__locationChoices::before{opacity:1;transform:translate(-50%,0) scale(1);}
+.ladata-nav__location.is-open .ladata-nav__locationChoice{opacity:1;transform:translateY(0) scale(1);transition-delay:.04s;}
+.ladata-nav__location.is-open .ladata-nav__locationChoice:nth-child(2){transition-delay:.11s;}
+.ladata-nav__location--mobile .ladata-nav__locationButton{width:34px!important;height:34px!important;padding:0!important;justify-content:center!important;}
+.ladata-nav__location--mobile .ladata-nav__locationChoices{left:0;min-width:140px;}
+.ladata-nav__location--mobile .ladata-nav__locationChoice{height:34px!important;font-size:8px!important;padding:0 12px!important;}
+/* login: quiet outlined pill, clearly a different species from the nav links */
+.ladata-nav__login{
+  display:inline-flex;align-items:center;padding:8px 15px;border-radius:999px;
+  border:0!important;cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(251,251,251,.36))!important;
+  -webkit-backdrop-filter:blur(16px) saturate(160%)!important;backdrop-filter:blur(16px) saturate(160%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 1px rgba(30,27,27,.05),0 1px 2px rgba(30,27,27,.05),0 10px 22px -14px rgba(30,27,27,.32)!important;
+  color:var(--dark);text-decoration:none;white-space:nowrap;
+  font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;
+  transition:box-shadow .3s ease,color .3s ease,background .3s ease,transform .35s cubic-bezier(.16,1,.3,1);
+}
+.ladata-nav__login:hover{background:linear-gradient(180deg,rgba(255,255,255,.88),rgba(251,251,251,.5))!important;box-shadow:inset 0 1px 0 #fff,inset 0 -1px 1px rgba(30,27,27,.05),0 2px 4px rgba(30,27,27,.06),0 14px 28px -14px rgba(30,27,27,.36)!important;transform:translateY(-1px)!important;color:var(--dark)!important;}
+.ladata-nav__booking{position:relative;z-index:2;isolation:isolate;flex:0 0 auto;}
+.ladata-nav__book{
+  display:inline-flex;align-items:center;gap:8px;padding:13px 18px;border-radius:999px;
+  border:0;background:linear-gradient(180deg,rgba(74,68,68,.92),rgba(46,41,41,.9))!important;
+  -webkit-backdrop-filter:blur(16px) saturate(150%)!important;backdrop-filter:blur(16px) saturate(150%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 1px rgba(0,0,0,.22),0 1px 2px rgba(23,18,18,.2),0 14px 30px -16px rgba(23,18,18,.55)!important;
+  color:var(--cream)!important;text-decoration:none;white-space:nowrap;cursor:pointer;font-family:inherit;line-height:1!important;
+  font-size:10px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;
+  transition:transform .45s cubic-bezier(.16,1,.3,1),background .3s ease,box-shadow .3s ease,padding .5s cubic-bezier(.16,1,.3,1),border-radius .5s cubic-bezier(.16,1,.3,1);
+}
+.ladata-nav__booking .ladata-nav__book{position:relative;z-index:2;}
+.ladata-nav__book:hover{transform:translateY(-2px)!important;background:linear-gradient(180deg,rgba(88,81,81,.95),rgba(52,46,46,.92))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.24),inset 0 -1px 1px rgba(0,0,0,.22),0 2px 4px rgba(23,18,18,.22),0 20px 40px -18px rgba(23,18,18,.65)!important;color:var(--cream)!important;}
+.ladata-nav__book svg{width:13px;height:13px;flex:0 0 auto;}
+.ladata-nav__bookChevron{transition:transform .55s cubic-bezier(.16,1,.3,1),opacity .3s ease;opacity:.64;}
+.ladata-nav__booking.is-open .ladata-nav__book{transform:translateY(-1px);border-radius:22px;}
+.ladata-nav__booking.is-open .ladata-nav__bookChevron{transform:rotate(180deg);}
+.ladata-nav__bookingChoices{position:absolute;z-index:1;top:calc(100% - 7px);right:0;width:100%;min-width:144px;padding-top:12px;display:grid;gap:6px;pointer-events:none;visibility:hidden;}
+.ladata-nav__bookingChoices::before{content:"";position:absolute;z-index:-1;top:1px;left:50%;width:34px;height:22px;border-radius:0 0 50% 50%;background:rgba(52,46,46,.82);filter:blur(5px);opacity:0;transform:translate(-50%,-13px) scale(.5,.2);transition:opacity .28s ease,transform .58s cubic-bezier(.16,1,.3,1);}
+.ladata-nav__bookingChoice{display:flex;align-items:center;justify-content:flex-start;gap:9px;width:100%;height:36px!important;padding:0 14px!important;border-radius:999px!important;border:0!important;background:linear-gradient(180deg,rgba(74,68,68,.96),rgba(42,37,37,.94))!important;color:var(--cream)!important;text-decoration:none!important;white-space:nowrap;-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -1px 1px rgba(0,0,0,.22),0 1px 2px rgba(23,18,18,.2),0 18px 36px -20px rgba(23,18,18,.85)!important;font-family:inherit!important;font-size:9px!important;font-weight:500!important;line-height:1!important;letter-spacing:.13em!important;text-transform:uppercase!important;opacity:0;transform:translateY(-20px) scale(.72,.45);transform-origin:50% 0;transition:opacity .28s ease,transform .62s cubic-bezier(.16,1,.3,1),background .25s ease,box-shadow .25s ease,color .25s ease;}
+.ladata-nav__bookingChoice:nth-child(2){transform:translateY(-48px) scale(.62,.35);transition-delay:0s;}
+.ladata-nav__bookingChoice:hover{background:linear-gradient(180deg,rgba(92,85,85,.98),rgba(52,46,46,.96))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.26),inset 0 -1px 1px rgba(0,0,0,.22),0 2px 4px rgba(23,18,18,.22),0 22px 40px -20px rgba(23,18,18,.9)!important;}
+.ladata-nav__bookingDot{width:5px;height:5px;border-radius:50%;background:var(--neon);box-shadow:0 0 0 3px rgba(127,227,196,.1);flex:0 0 auto;}
+.ladata-nav__bookingDot--closed{background:#f14d4c!important;box-shadow:0 0 0 3px rgba(241,77,76,.12)!important;}
+.ladata-nav__booking.is-open .ladata-nav__bookingChoices{pointer-events:auto;visibility:visible;}
+.ladata-nav__booking.is-open .ladata-nav__bookingChoices::before{opacity:1;transform:translate(-50%,0) scale(1);}
+.ladata-nav__booking.is-open .ladata-nav__bookingChoice{opacity:1;transform:translateY(0) scale(1);transition-delay:.04s;}
+.ladata-nav__booking.is-open .ladata-nav__bookingChoice:nth-child(2){transition-delay:.11s;}
+.ladata-nav.is-stuck .ladata-nav__book{padding:9px 16px;}
+
+.ladata-nav__burger{grid-column:1;justify-self:start;}
+.ladata-nav__mobileActions{grid-column:3;justify-self:end;display:flex;align-items:center;gap:7px;}
+.ladata-nav__lang--mobile{display:inline-flex;width:34px;height:34px;padding:0;justify-content:center;flex:0 0 34px;font-size:9px;letter-spacing:.08em;}
+.ladata-nav__book--mobile{
+  padding:11px 14px;font-size:9px;letter-spacing:.16em;
+  transition:padding .5s cubic-bezier(.16,1,.3,1);
+}
+.ladata-nav__mobileActions .ladata-nav__book--mobile{height:34px!important;padding:0 12px!important;}
+.ladata-nav.is-stuck .ladata-nav__book--mobile{padding:0 12px!important;}
+.ladata-nav__book--mobile svg{width:11px;height:11px;}
+.ladata-nav__booking--mobile .ladata-nav__bookingChoices{right:0;min-width:132px;}
+.ladata-nav__booking--mobile .ladata-nav__bookingChoice{height:34px!important;font-size:8px!important;padding:0 12px!important;}
+
+/* --- mobile trigger --- */
+.ladata-nav__burger{
+  display:inline-flex;flex-direction:column;justify-content:center;gap:5px;
+  width:38px;height:38px;padding:0 10px;border:1px solid rgba(30,27,27,.14);border-radius:999px;
+  background:transparent;cursor:pointer;transition:border-color .3s ease,background .3s ease;
+}
+.ladata-nav__burger:hover{border-color:rgba(30,27,27,.34);}
+.ladata-nav__burger i{display:block;height:1px;background:var(--dark);transition:transform .45s cubic-bezier(.16,1,.3,1),opacity .3s ease;}
+.ladata-nav.is-open .ladata-nav__burger i:first-child{transform:translateY(3px) rotate(45deg);}
+.ladata-nav.is-open .ladata-nav__burger i:last-child{transform:translateY(-3px) rotate(-45deg);}
+
+@media(max-width:767px){
+  .ladata-nav__wrap{grid-template-columns:auto minmax(0,1fr) auto;gap:6px;}
+  .ladata-nav__mobileActions{position:relative;gap:6px;}
+  .ladata-nav__logo{width:92px;height:19px;}
+  .ladata-nav__logoFull{opacity:0;transform:translateY(-3px) scale(.96);}
+  .ladata-nav__logoWord{opacity:1;transform:none;}
+}
+
+/* --- mobile panel --- */
+.ladata-nav__panel{
+  position:fixed;inset:0;z-index:8999;display:flex;flex-direction:column;justify-content:center;
+  padding:96px 26px 34px;background:rgba(251,251,251,.98);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);
+  opacity:0;visibility:hidden;transform:translateY(-10px);
+  transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .55s cubic-bezier(.16,1,.3,1),visibility .5s;
+}
+.ladata-nav.is-open .ladata-nav__panel{opacity:1;visibility:visible;transform:none;}
+.ladata-nav__panelLinks{display:grid;gap:2px;margin:0 auto;width:100%;max-width:520px;}
+.ladata-nav__panelLink{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:16px 0;border-bottom:1px solid rgba(30,27,27,.1);
+  color:var(--dark);text-decoration:none;font-size:22px;font-weight:300;letter-spacing:.01em;line-height:1.2;
+  opacity:0;transform:translateY(14px);
+  transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1),color .3s ease;
+}
+.ladata-nav.is-open .ladata-nav__panelLink{opacity:1;transform:none;}
+.ladata-nav.is-open .ladata-nav__panelLink:nth-child(1){transition-delay:.06s;}
+.ladata-nav.is-open .ladata-nav__panelLink:nth-child(2){transition-delay:.12s;}
+.ladata-nav.is-open .ladata-nav__panelLink:nth-child(3){transition-delay:.18s;}
+.ladata-nav.is-open .ladata-nav__panelLink:nth-child(4){transition-delay:.24s;}
+.ladata-nav.is-open .ladata-nav__panelLink:nth-child(5){transition-delay:.3s;}
+.ladata-nav.is-open .ladata-nav__panelLink:nth-child(6){transition-delay:.36s;}
+
+.ladata-nav__panelLocation{
+  margin:0 auto 22px;width:100%;max-width:520px;
+  opacity:0;transform:translateY(14px);
+  transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1);
+}
+.ladata-nav.is-open .ladata-nav__panelLocation{opacity:1;transform:none;transition-delay:.04s;}
+.ladata-nav__panelLocationLabel{
+  margin:0 0 10px;font-size:10px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:var(--mid);
+}
+.ladata-nav__panelLocationGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ladata-nav__panelLocationBtn{
+  padding:14px 16px;border-radius:999px;border:1px solid rgba(30,27,27,.14);background:transparent;
+  font-family:inherit;font-size:13px;font-weight:400;color:var(--dark);cursor:pointer;text-align:center;
+  transition:border-color .3s ease,background .3s ease;
+}
+.ladata-nav__panelLocationBtn:hover{border-color:rgba(30,27,27,.34);}
+.ladata-nav__panelLocationBtn.is-active{border-color:var(--dark);background:var(--dark);color:var(--cream);}
+
+.ladata-nav__panelFoot{
+  display:grid;gap:12px;margin:26px auto 0;width:100%;max-width:520px;
+  opacity:0;transform:translateY(14px);
+  transition:opacity .6s cubic-bezier(.16,1,.3,1) .42s,transform .6s cubic-bezier(.16,1,.3,1) .42s;
+}
+.ladata-nav.is-open .ladata-nav__panelFoot{opacity:1;transform:none;}
+.ladata-nav__panelRow{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.ladata-nav__panelFoot .ladata-nav__booking{width:100%;}
+.ladata-nav__panelFoot .ladata-nav__book{justify-content:center;width:100%;padding:15px 22px;}
+.ladata-nav__panelFoot .ladata-nav__bookingChoices{min-width:100%;}
+
+/* --- light tone (over dark pages / dark photography) --- */
+.ladata-nav--light .ladata-nav__wrap{
+  background:rgba(30,27,27,.30);border-color:rgba(251,251,251,.18);
+  box-shadow:inset 0 1px 0 0 rgba(255,255,255,.10),0 18px 50px -34px rgba(0,0,0,.7);
+}
+.ladata-nav--light.is-stuck .ladata-nav__wrap{background:rgba(30,27,27,.48);border-color:rgba(251,251,251,.14);}
+.ladata-nav--light .ladata-nav__link{color:var(--cream);}
+.ladata-nav--light .ladata-nav__logoDark{opacity:0;}
+.ladata-nav--light .ladata-nav__logoLight{opacity:1;}
+.ladata-nav--light .ladata-nav__lang{background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.08))!important;-webkit-backdrop-filter:blur(16px) saturate(150%)!important;backdrop-filter:blur(16px) saturate(150%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -1px 1px rgba(0,0,0,.14),0 10px 22px -14px rgba(0,0,0,.5)!important;color:var(--cream)!important;}
+.ladata-nav--light .ladata-nav__lang:hover{background:linear-gradient(180deg,rgba(255,255,255,.32),rgba(255,255,255,.14))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 1px rgba(0,0,0,.14),0 14px 28px -14px rgba(0,0,0,.55)!important;color:var(--cream)!important;}
+.ladata-nav--light .ladata-nav__login{background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.08))!important;-webkit-backdrop-filter:blur(16px) saturate(150%)!important;backdrop-filter:blur(16px) saturate(150%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -1px 1px rgba(0,0,0,.14),0 10px 22px -14px rgba(0,0,0,.5)!important;color:var(--cream)!important;}
+.ladata-nav--light .ladata-nav__login:hover{background:linear-gradient(180deg,rgba(255,255,255,.32),rgba(255,255,255,.14))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 1px rgba(0,0,0,.14),0 14px 28px -14px rgba(0,0,0,.55)!important;color:var(--cream)!important;}
+.ladata-nav--light .ladata-nav__locationButton{background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.09))!important;color:var(--cream)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.42),inset 0 -1px 1px rgba(0,0,0,.14),0 12px 26px -14px rgba(0,0,0,.55)!important;}
+.ladata-nav--light .ladata-nav__locationButton:hover{background:linear-gradient(180deg,rgba(255,255,255,.32),rgba(255,255,255,.14))!important;color:var(--cream)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 1px rgba(0,0,0,.14),0 16px 32px -14px rgba(0,0,0,.6)!important;}
+.ladata-nav--light .ladata-nav__book{background:linear-gradient(180deg,rgba(251,251,251,.96),rgba(232,232,232,.88))!important;-webkit-backdrop-filter:blur(16px) saturate(150%)!important;backdrop-filter:blur(16px) saturate(150%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 1px rgba(30,27,27,.05),0 1px 2px rgba(0,0,0,.12),0 14px 30px -16px rgba(0,0,0,.55)!important;color:var(--dark)!important;}
+.ladata-nav--light .ladata-nav__book:hover{background:linear-gradient(180deg,#fff,rgba(234,234,234,.94))!important;box-shadow:inset 0 1px 0 #fff,inset 0 -1px 1px rgba(30,27,27,.05),0 2px 4px rgba(0,0,0,.14),0 20px 40px -18px rgba(0,0,0,.6)!important;color:var(--dark)!important;}
+.ladata-nav--light .ladata-nav__burger{border-color:rgba(251,251,251,.28);}
+.ladata-nav--light .ladata-nav__burger i{background:var(--cream);}
+.ladata-nav--light .ladata-nav__panel{background:rgba(30,27,27,.97);}
+.ladata-nav--light .ladata-nav__panelLink{color:var(--cream);border-bottom-color:rgba(251,251,251,.12);}
+.ladata-nav--light .ladata-nav__panelLocationLabel{color:rgba(251,251,251,.55);}
+.ladata-nav--light .ladata-nav__panelLocationBtn{border-color:rgba(251,251,251,.2);color:var(--cream);}
+.ladata-nav--light .ladata-nav__panelLocationBtn.is-active{border-color:var(--cream);background:var(--cream);color:var(--dark);}
+
+/* --- over photography: pale pill, denser so dark text stays legible --- */
+.ladata-nav--onmedia .ladata-nav__wrap{
+  background:rgba(251,251,251,.66);border-color:rgba(30,27,27,.12);
+  box-shadow:inset 0 1px 0 0 rgba(255,255,255,.38),0 18px 50px -30px rgba(30,27,27,.65);
+}
+.ladata-nav--onmedia.is-stuck .ladata-nav__wrap{background:rgba(251,251,251,.74);}
+.ladata-nav--onmedia .ladata-nav__lang{background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(251,251,251,.44))!important;-webkit-backdrop-filter:blur(16px) saturate(160%)!important;backdrop-filter:blur(16px) saturate(160%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 1px rgba(30,27,27,.05),0 10px 22px -14px rgba(30,27,27,.42)!important;}
+.ladata-nav--onmedia .ladata-nav__login{background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(251,251,251,.44))!important;-webkit-backdrop-filter:blur(16px) saturate(160%)!important;backdrop-filter:blur(16px) saturate(160%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 1px rgba(30,27,27,.05),0 10px 22px -14px rgba(30,27,27,.42)!important;}
+
+/* the panel lives outside the bar: backdrop-filter on the bar would clip it */
+.ladata-nav--panelroot{position:static;padding:0!important;background:none!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}
+
+@media(min-width:768px) and (max-width:1079px){
+  .ladata-nav{padding-left:28px;padding-right:28px;}
+  .ladata-nav.is-stuck{padding-left:28px;padding-right:28px;}
+  .ladata-nav.is-stuck .ladata-nav__wrap{min-height:40px;}
+}
+
+@media(min-width:1080px){
+  .ladata-nav__links,.ladata-nav__side{display:flex;}
+  .ladata-nav__burger{display:none;}
+  .ladata-nav__mobileActions{display:none;}
+  .ladata-nav__book--mobile{display:none;}
+  .ladata-nav__panel{display:none;}
+  .ladata-nav{padding:20px 28px;}
+  .ladata-nav.is-stuck{padding:12px 28px;}
+  .ladata-nav__wrap{grid-template-columns:auto 1fr auto;gap:20px;padding:12px 24px 12px 24px;}
+  .ladata-nav.is-stuck .ladata-nav__wrap{min-height:43px;padding:7px 24px 7px 24px;}
+  .ladata-nav__logo{grid-column:auto;justify-self:start;}
+  .ladata-nav__logo{width:142px;height:36px;}
+  .ladata-nav.is-stuck .ladata-nav__logo{width:104px;height:21px;}
+}
+@media(prefers-reduced-motion:reduce){
+  .ladata-nav,.ladata-nav *{transition-duration:.01ms!important;}
+}
+</style>
+
+<header class="ladata-nav" id="ladataNav" aria-label="Ladata main navigation">
+  <div class="ladata-nav__wrap">
+    <button type="button" class="ladata-nav__burger" data-ladata-burger aria-expanded="false" aria-label="Open menu"><i></i><i></i></button>
+    
+
+    <a class="ladata-nav__logo" data-ladata-nav="home" href="https://www.bookladata.com/">
+      <span class="ladata-nav__logoFull" aria-hidden="true">
+        <img class="ladata-nav__logoDark" src="https://images.squarespace-cdn.com/content/670af2bf532e273dff630663/4a2083fa-8198-43d3-b639-11ebb02629e8/7b2ee419-cc42-4707-b91d-b8ece6b13c36.png?content-type=image%2Fpng" alt="">
+        <img class="ladata-nav__logoLight" src="https://images.squarespace-cdn.com/content/670af2bf532e273dff630663/89cbce06-cb4c-4b1d-a4da-b72718b7691e/22a20f07-5079-48a4-b93d-1fdcb36da692.png?content-type=image%2Fpng" alt="">
+      </span>
+      <span class="ladata-nav__logoWord" aria-hidden="true">
+        <img class="ladata-nav__logoDark" src="https://images.squarespace-cdn.com/content/670af2bf532e273dff630663/4a2083fa-8198-43d3-b639-11ebb02629e8/7b2ee419-cc42-4707-b91d-b8ece6b13c36.png?content-type=image%2Fpng" alt="">
+        <img class="ladata-nav__logoLight" src="https://images.squarespace-cdn.com/content/670af2bf532e273dff630663/89cbce06-cb4c-4b1d-a4da-b72718b7691e/22a20f07-5079-48a4-b93d-1fdcb36da692.png?content-type=image%2Fpng" alt="">
+      </span>
+      <span class="ladata-nav__logoLabel">Ladata — House of Human Optimisation</span>
+    </a>
+
+    
+
+    <nav class="ladata-nav__links">
+      <a class="ladata-nav__link" href="https://www.bookladata.com/the-experience">The Experience</a>
+      <a class="ladata-nav__link" data-ladata-nav="memberships" href="https://www.bookladata.com/memberships">Memberships &amp; Packs</a>
+      <a class="ladata-nav__link" href="https://www.bookladata.com/about">About</a>
+      <a class="ladata-nav__link" href="https://www.bookladata.com/contact">Contact</a>
+    </nav>
+
+    
+
+    <div class="ladata-nav__side">
+      <div class="ladata-nav__location" data-ladata-location>
+        <button type="button" class="ladata-nav__locationButton" data-ladata-location-toggle aria-expanded="false" aria-controls="ladataLocationDesktop" aria-haspopup="true" aria-label="Location: Matosinhos">
+          <span class="ladata-nav__locationLabel"><span>MATOSINHOS</span></span>
+          <svg class="ladata-nav__locationChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="ladata-nav__locationChoices" id="ladataLocationDesktop" aria-hidden="true">
+          <button type="button" class="ladata-nav__locationChoice is-active" data-ladata-location-option="matosinhos" tabindex="-1"><span class="ladata-nav__locationLabel"><span>MATOSINHOS</span></span></button>
+          <button type="button" class="ladata-nav__locationChoice" data-ladata-location-option="leiria" tabindex="-1"><span class="ladata-nav__locationLabel"><span>LEIRIA</span></span></button>
+        </div>
+      </div>
+      <button type="button" class="ladata-nav__lang" data-ladata-lang aria-label="Switch language">
+        <span data-on>EN</span><span data-sep>/</span><span data-off>PT</span>
+      </button>
+      <a class="ladata-nav__login" data-ladata-nav="login" href="https://ladata.as.me/">Login</a>
+      <div class="ladata-nav__booking" data-ladata-booking>
+        <button type="button" class="ladata-nav__book" data-ladata-booking-toggle aria-expanded="false" aria-controls="ladataBookingDesktop" aria-label="Choose a location to book">Book now
+          <svg class="ladata-nav__bookChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="ladata-nav__bookingChoices" id="ladataBookingDesktop" aria-hidden="true">
+          <a class="ladata-nav__bookingChoice" href="https://www.bookladata.com/appointments" tabindex="-1"><i class="ladata-nav__bookingDot" aria-hidden="true"></i><span>Matosinhos</span></a>
+          <a class="ladata-nav__bookingChoice" href="https://www.bookladata.com/appointments-leiria" tabindex="-1"><i class="ladata-nav__bookingDot" aria-hidden="true"></i><span>Leiria</span></a>
+        </div>
+      </div>
+    </div>
+
+    
+
+    <div class="ladata-nav__mobileActions">
+      <div class="ladata-nav__location ladata-nav__location--mobile" data-ladata-location>
+        <button type="button" class="ladata-nav__locationButton" data-ladata-location-toggle aria-expanded="false" aria-controls="ladataLocationMobile" aria-haspopup="true" aria-label="Choose location. Current location: Matosinhos">
+          <svg class="ladata-nav__locationIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span class="ladata-nav__sr">Choose location</span>
+        </button>
+        <div class="ladata-nav__locationChoices" id="ladataLocationMobile" aria-hidden="true">
+          <button type="button" class="ladata-nav__locationChoice is-active" data-ladata-location-option="matosinhos" tabindex="-1"><span class="ladata-nav__locationLabel"><span>MATOSINHOS</span></span></button>
+          <button type="button" class="ladata-nav__locationChoice" data-ladata-location-option="leiria" tabindex="-1"><span class="ladata-nav__locationLabel"><span>LEIRIA</span></span></button>
+        </div>
+      </div>
+      <button type="button" class="ladata-nav__lang ladata-nav__lang--mobile" data-ladata-lang aria-label="Switch language"><span data-off>PT</span></button>
+      <div class="ladata-nav__booking ladata-nav__booking--mobile" data-ladata-booking>
+        <button type="button" class="ladata-nav__book ladata-nav__book--mobile" data-ladata-booking-toggle aria-expanded="false" aria-controls="ladataBookingMobile" aria-label="Choose a location to book">Book now
+          <svg class="ladata-nav__bookChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="ladata-nav__bookingChoices" id="ladataBookingMobile" aria-hidden="true">
+          <a class="ladata-nav__bookingChoice" href="https://www.bookladata.com/appointments" tabindex="-1"><i class="ladata-nav__bookingDot" aria-hidden="true"></i><span>Matosinhos</span></a>
+          <a class="ladata-nav__bookingChoice" href="https://www.bookladata.com/appointments-leiria" tabindex="-1"><i class="ladata-nav__bookingDot" aria-hidden="true"></i><span>Leiria</span></a>
+        </div>
+      </div>
+    </div>
+      
+  </div>
+
+</header>
+
+<div class="ladata-nav ladata-nav--panelroot" id="ladataNavPanelRoot">
+  <div class="ladata-nav__panel" role="dialog" aria-label="Menu" aria-hidden="true">
+    <div class="ladata-nav__panelLocation">
+      <p class="ladata-nav__panelLocationLabel">Choose location</p>
+      <div class="ladata-nav__panelLocationGrid">
+        <button type="button" class="ladata-nav__panelLocationBtn is-active" data-ladata-location-option="matosinhos"><span class="ladata-nav__locationLabel"><span>MATOSINHOS</span></span></button>
+        <button type="button" class="ladata-nav__panelLocationBtn" data-ladata-location-option="leiria"><span class="ladata-nav__locationLabel"><span>LEIRIA</span></span></button>
+      </div>
+    </div>
+    <div class="ladata-nav__panelLinks">
+      <a class="ladata-nav__panelLink" href="https://www.bookladata.com/the-experience">The Experience</a>
+      <a class="ladata-nav__panelLink" data-ladata-nav="memberships" href="https://www.bookladata.com/memberships">Memberships &amp; Packs</a>
+      <a class="ladata-nav__panelLink" href="https://www.bookladata.com/about">About</a>
+      <a class="ladata-nav__panelLink" href="https://www.bookladata.com/contact">Contact</a>
+    </div>
+    <div class="ladata-nav__panelFoot">
+      <div class="ladata-nav__panelRow">
+        <button type="button" class="ladata-nav__lang" data-ladata-lang aria-label="Switch language">
+          <span data-on>EN</span><span data-sep>/</span><span data-off>PT</span>
+        </button>
+        <a class="ladata-nav__login" data-ladata-nav="login" href="https://ladata.as.me/">Login</a>
+      </div>
+      <div class="ladata-nav__booking ladata-nav__booking--panel" data-ladata-booking>
+        <button type="button" class="ladata-nav__book" data-ladata-booking-toggle aria-expanded="false" aria-controls="ladataBookingPanel" aria-label="Choose a location to book">Book now
+          <svg class="ladata-nav__bookChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="ladata-nav__bookingChoices" id="ladataBookingPanel" aria-hidden="true">
+          <a class="ladata-nav__bookingChoice" href="https://www.bookladata.com/appointments" tabindex="-1"><i class="ladata-nav__bookingDot" aria-hidden="true"></i><span>Matosinhos</span></a>
+          <a class="ladata-nav__bookingChoice" href="https://www.bookladata.com/appointments-leiria" tabindex="-1"><i class="ladata-nav__bookingDot" aria-hidden="true"></i><span>Leiria</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var nav = document.getElementById('ladataNav');
+  if(!nav) return;
+  var panelRoot = document.getElementById('ladataNavPanelRoot');
+
+  /* ---------- shrink on scroll (full lockup -> wordmark) ---------- */
+  var frame = 0;
+  function read(){
+    nav.classList.toggle('is-stuck', window.pageYOffset > 24);
+    tone();
+  }
+  function onScroll(){
+    if(frame) return;
+    frame = window.requestAnimationFrame(function(){ frame = 0; read(); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('resize', onScroll, {passive:true});
+
+  /* ---------- adaptive colour: read what sits behind the bar ---------- */
+  function parse(color){
+    var m = /rgba?\(([^)]+)\)/.exec(color || '');
+    if(!m) return null;
+    var p = m[1].split(',').map(function(v){ return parseFloat(v); });
+    if(p.length > 3 && p[3] < 0.45) return null;      /* see-through: keep looking up */
+    return p;
+  }
+  function luminance(p){ return (0.2126*p[0] + 0.7152*p[1] + 0.0722*p[2]) / 255; }
+  function sample(x, y){
+    var stack = document.elementsFromPoint(x, y) || [];
+    for(var i = 0; i < stack.length; i++){
+      var el = stack[i];
+      if(el.closest && el.closest('.ladata-nav')) continue;
+      var node = el;
+      while(node && node.nodeType === 1){
+        var forced = node.getAttribute && node.getAttribute('data-ladata-nav');
+        if(forced === 'light') return 0;               /* forced cream text */
+        if(forced === 'dark') return 1;                /* forced dark text */
+        var cs = window.getComputedStyle(node);
+        if(cs.backgroundImage && cs.backgroundImage !== 'none') return 'media';
+        if(node.tagName === 'IMG' || node.tagName === 'VIDEO') return 'media';
+        var p = parse(cs.backgroundColor);
+        if(p) return luminance(p);
+        node = node.parentElement;
+      }
+    }
+    return 1;
+  }
+  function tone(){
+    var y = Math.min(window.innerHeight - 2, nav.getBoundingClientRect().bottom + 6);
+    var w = window.innerWidth;
+    var values = [sample(w*0.10, y), sample(w*0.5, y), sample(w*0.9, y)];
+    var media = false, sum = 0, count = 0;
+    values.forEach(function(v){
+      if(v === 'media'){ media = true; return; }
+      sum += v; count++;
+    });
+    /* only real dark backgrounds get the dark glass pill; photography keeps the pale one */
+    var light = !media && count > 0 && (sum / count) < 0.5;
+    nav.classList.toggle('ladata-nav--light', light);
+    nav.classList.toggle('ladata-nav--onmedia', media && !light);
+    if(panelRoot){
+      panelRoot.classList.toggle('ladata-nav--light', light);
+      panelRoot.classList.toggle('ladata-nav--onmedia', media && !light);
+    }
+  }
+  read();
+  window.setTimeout(read, 400);
+  window.addEventListener('load', read);
+
+  /* ---------- mark the current page ---------- */
+  var here = window.location.pathname.replace(/\/$/,'');
+  document.querySelectorAll('.ladata-nav__link, .ladata-nav__panelLink').forEach(function(a){
+    var path = (a.getAttribute('href')||'').replace(/^https?:\/\/[^/]+/,'').replace(/\/$/,'');
+    if(path && path === here) a.classList.add('is-active');
+  });
+
+  /* ---------- mobile panel ---------- */
+  var burger = nav.querySelector('[data-ladata-burger]');
+  var panel = panelRoot ? panelRoot.querySelector('.ladata-nav__panel') : null;
+  function setOpen(open){
+    nav.classList.toggle('is-open', open);
+    if(panelRoot) panelRoot.classList.toggle('is-open', open);
+    burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
+  burger.addEventListener('click', function(){ setOpen(!nav.classList.contains('is-open')); });
+  panel.querySelectorAll('a').forEach(function(a){ a.addEventListener('click', function(){ setOpen(false); }); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') setOpen(false); });
+
+  /* ---------- booking location chooser ---------- */
+  function closeBookings(except){
+    document.querySelectorAll('[data-ladata-booking]').forEach(function(root){
+      if(root === except) return;
+      root.classList.remove('is-open');
+      var toggle = root.querySelector('[data-ladata-booking-toggle]');
+      var choices = root.querySelector('.ladata-nav__bookingChoices');
+      if(toggle){ toggle.setAttribute('aria-expanded','false'); toggle.setAttribute('aria-label','Choose a location to book'); }
+      if(choices) choices.setAttribute('aria-hidden','true');
+      root.querySelectorAll('.ladata-nav__bookingChoice').forEach(function(link){ link.setAttribute('tabindex','-1'); });
+    });
+  }
+  document.querySelectorAll('[data-ladata-booking-toggle]').forEach(function(toggle){
+    toggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      var root = toggle.closest('[data-ladata-booking]');
+      if(!root) return;
+      var open = !root.classList.contains('is-open');
+      closeBookings(root);
+      closeLocations();
+      root.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close booking location choices' : 'Choose a location to book');
+      var choices = root.querySelector('.ladata-nav__bookingChoices');
+      if(choices) choices.setAttribute('aria-hidden', open ? 'false' : 'true');
+      root.querySelectorAll('.ladata-nav__bookingChoice').forEach(function(link){ link.setAttribute('tabindex', open ? '0' : '-1'); });
+    });
+  });
+
+
+  /* ---------- location selector ---------- */
+  /* ---------- per-location URLs ----------
+     Ported from the leiria-launch branch. Before this, the bar had no
+     per-location links at all: Memberships and Login stayed pointed at Porto
+     on every page, Leiria pages included, so a visitor reading about Leiria
+     and clicking Memberships landed on Porto's.
+
+     The selected location is derived from the PATH, never from storage, so the
+     toggle can never disagree with the page you are actually on.
+
+     Book now is deliberately NOT in here. It is an explicit two-location
+     chooser in this design, which is the better behaviour for the primary CTA:
+     it offers the choice rather than guessing from context. */
+  var SITE = {
+    matosinhos: {
+      home:        'https://www.bookladata.com/',
+      memberships: 'https://www.bookladata.com/memberships',
+      login:       'https://ladata.as.me/'
+    },
+    leiria: {
+      /* NOT /leiria - the founding offers page keeps that slug. The Leiria
+         landing page is /landing-leiria. */
+      home:        'https://www.bookladata.com/landing-leiria',
+      memberships: 'https://www.bookladata.com/memberships-leiria',
+      login:       'https://ladataleiria.as.me/'   /* separate Acuity account */
+    }
+  };
+  /* The Experience, About and Contact are shared: Leiria has no versions yet.
+     Add them to SITE when it does. */
+  var LEIRIA_PATHS = ['/leiria','/landing-leiria','/memberships-leiria','/appointments-leiria'];
+  var LOCATION_KEY = 'ladata:location';
+
+  /* NOT named read(): a read() already exists above as the scroll handler, and
+     a second declaration in the same scope silently replaces it. That bug shipped
+     once already and stopped the bar shrinking on scroll. */
+  function store(key, value){ try{ window.localStorage.setItem(key, value); }catch(_e){} }
+
+  function linkSet(location){ return SITE[location] || SITE.matosinhos; }
+
+  /* Marks the current page in the nav. Called from paintLinks(), AFTER the
+     hrefs have been repointed - if it runs before, it compares the live path
+     against Porto's URLs and never matches on a Leiria page. */
+  function markActive(){
+    var here = window.location.pathname.replace(/^\/(pt|en)(?=\/|$)/,'').replace(/\/$/,'');
+    document.querySelectorAll('.ladata-nav__link, .ladata-nav__panelLink').forEach(function(a){
+      var path = (a.getAttribute('href')||'').replace(/^https?:\/\/[^/]+/,'').replace(/\/$/,'');
+      a.classList.toggle('is-current', path !== '' && path === here);
+    });
+  }
+
+  function paintLinks(location){
+    var set = linkSet(location);
+    document.querySelectorAll('[data-ladata-nav]').forEach(function(link){
+      var key = link.getAttribute('data-ladata-nav');
+      if(set[key]) link.setAttribute('href', set[key]);
+    });
+    markActive();
+  }
+  function locationLabel(location){
+    return location === 'leiria' ? '<span>LEIRIA</span>' : '<span>MATOSINHOS</span>';
+  }
+  function paintLocation(location){
+    document.querySelectorAll('[data-ladata-location-toggle]').forEach(function(toggle){
+      var label = toggle.querySelector('.ladata-nav__locationLabel');
+      if(label) label.innerHTML = locationLabel(location);
+      toggle.setAttribute('aria-label', toggle.closest('.ladata-nav__location--mobile')
+        ? 'Choose location. Current location: ' + location
+        : 'Location: ' + location);
+    });
+    document.querySelectorAll('[data-ladata-location-option]').forEach(function(option){
+      var active = option.getAttribute('data-ladata-location-option') === location;
+      option.classList.toggle('is-active', active);
+      option.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+  var locationPath = window.location.pathname.replace(/^\/(pt|en)(?=\/|$)/,'').replace(/\/$/,'') || '/';
+  var pageLocation = LEIRIA_PATHS.indexOf(locationPath) > -1 ? 'leiria' : 'matosinhos';
+  store(LOCATION_KEY, pageLocation);
+  paintLocation(pageLocation);
+  paintLinks(pageLocation);
+  function closeLocations(except){
+    document.querySelectorAll('[data-ladata-location]').forEach(function(root){
+      if(root === except) return;
+      root.classList.remove('is-open');
+      var toggle = root.querySelector('[data-ladata-location-toggle]');
+      if(toggle) toggle.setAttribute('aria-expanded', 'false');
+      var choices = root.querySelector('.ladata-nav__locationChoices');
+      if(choices) choices.setAttribute('aria-hidden','true');
+      root.querySelectorAll('.ladata-nav__locationChoice').forEach(function(choice){ choice.setAttribute('tabindex','-1'); });
+    });
+  }
+  document.querySelectorAll('[data-ladata-location-toggle]').forEach(function(toggle){
+    toggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      var root = toggle.closest('[data-ladata-location]');
+      if(!root) return;
+      var open = !root.classList.contains('is-open');
+      closeBookings();
+      closeLocations(root);
+      root.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      var choices = root.querySelector('.ladata-nav__locationChoices');
+      if(choices) choices.setAttribute('aria-hidden', open ? 'false' : 'true');
+      root.querySelectorAll('.ladata-nav__locationChoice').forEach(function(choice){ choice.setAttribute('tabindex', open ? '0' : '-1'); });
+    });
+  });
+  document.querySelectorAll('[data-ladata-location-option]').forEach(function(option){
+    option.addEventListener('click', function(e){
+      e.stopPropagation();
+      var location = option.getAttribute('data-ladata-location-option');
+      if(location !== 'leiria' && location !== 'matosinhos') return;
+      store(LOCATION_KEY, location);
+      paintLocation(location);
+      paintLinks(location);
+      closeLocations();
+      window.location.href = linkSet(location).home;
+    });
+  });
+  document.addEventListener('click', function(){ closeLocations(); closeBookings(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') { closeBookings(); closeLocations(); } });
+
+  /* ---------- language: Weglot ---------- */
+  var PAIR = ['en','pt'];
+  function weglot(){ return window.Weglot && window.Weglot.initialized ? window.Weglot : null; }
+  function currentLang(){
+    var w = weglot();
+    if(w && w.getCurrentLang) return String(w.getCurrentLang()).toLowerCase();
+    var html = (document.documentElement.getAttribute('lang')||'en').slice(0,2).toLowerCase();
+    return PAIR.indexOf(html) > -1 ? html : 'en';
+  }
+  function paint(){
+    var on = currentLang();
+    var off = on === PAIR[0] ? PAIR[1] : PAIR[0];
+    document.querySelectorAll('[data-ladata-lang]').forEach(function(btn){
+      var current = btn.querySelector('[data-on]');
+      var target = btn.querySelector('[data-off]');
+      if(current) current.textContent = on.toUpperCase();
+      if(target) target.textContent = off.toUpperCase();
+      btn.setAttribute('aria-label', 'Language: ' + on.toUpperCase() + '. Switch to ' + off.toUpperCase());
+    });
+  }
+  function switchLang(){
+    var on = currentLang();
+    var target = on === PAIR[0] ? PAIR[1] : PAIR[0];
+    var w = weglot();
+    if(w && w.switchTo){ w.switchTo(target); window.setTimeout(paint, 60); return; }
+    /* Weglot not loaded yet: fall back to its URL scheme (/pt/... ) */
+    var path = window.location.pathname.replace(/^\/(pt|en)(?=\/|$)/,'') || '/';
+    window.location.href = (target === PAIR[0] ? path : '/' + target + path) + window.location.search;
+  }
+  document.querySelectorAll('[data-ladata-lang]').forEach(function(btn){
+    btn.addEventListener('click', switchLang);
+  });
+  paint();
+  function bindWeglot(){
+    var w = weglot();
+    if(!w){ return false; }
+    if(w.on) w.on('languageChanged', paint);
+    paint();
+    return true;
+  }
+  if(!bindWeglot()){
+    var tries = 0;
+    var poll = window.setInterval(function(){
+      if(bindWeglot() || ++tries > 40) window.clearInterval(poll);
+    }, 250);
+  }
+})();
+</script>
