@@ -1,5 +1,5 @@
 {
-  "leiria_live": true,
+  "leiria_live": false,
   "updated": "2026-10-30",
-  "note": "TEST IN PROGRESS - reverting to false within minutes. Set leiria_live to true to put the Leiria pages live in the menu bar. Nothing else needs changing. The site fails closed on any error."
+  "note": "Set leiria_live to true to put the Leiria pages live in the menu bar. Nothing else needs changing. The site fails closed on any error."
 }
